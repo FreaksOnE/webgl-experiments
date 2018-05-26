@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>three.js</title>
+
+	<style>
+		body {
+			margin: 0;
+			font-family: 'Raleway', sans-serif !important;
+			height: 100vh;
+			/*background-color: #eaecee !important;*/
+			color: #555 !important;
+			overflow: hidden;
+		}
+
+	</style>
+</head>
+
+<body>
+    <script src="js/three.min.js"></script>
+	<script>
+		// All three.js stuff goes in here...
+        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+        var windowHalfX = window.innerWidth / 2;
+		var windowHalfY = window.innerHeight / 2;
+
+		// Start by defining the variables we need:
+		var camera, scene, renderer;
+		var geometry, material, mesh;
+        var mouseX = 0, mouseY = 0;
+
+		// Initialize the scene
+		var init = function() {
+
+			// Init stuff here...
+
+			// Create a new Renderer element (this will be our canvas)
+			renderer = new THREE.WebGLRenderer();
+
+			// Then we'll set it so that it takes up the entire viewport
+			renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setClearColor(0xeaecee);
+
+			// Now let's add our renderer to our document
+			document.body.appendChild(renderer.domElement);
+
+			scene = new THREE.Scene();
+            var imgType = '.png';
+            scene.background = new THREE.CubeTextureLoader().setPath( 'bg/solid/' )
+            .load(['px'+imgType, 'nx'+imgType, 'py'+imgType, 'ny'+imgType, 'pz'+imgType, 'nz'+imgType], function(a){
+                console.log(a);
+            } );
+            
+
+			camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 100000);
+
+			camera.position.set(0, 0, 3200);
+
+			geometry = new THREE.SphereGeometry(300, 15, 10);
+			material = new THREE.MeshBasicMaterial({
+				color: 0xff5733,
+				wireframe: true,
+				wireframeLinewidth: 1
+			});
+			mesh = new THREE.Mesh(geometry, material);
+
+			scene.add(mesh);
+
+		}
+
+		var animate = function() {
+
+			requestAnimationFrame(animate);
+
+			mesh.rotation.x = Date.now() * 0.0002;
+			mesh.rotation.y = Date.now() * 0.001;
+			
+            renderOnPage();
+		}
+
+   			function onDocumentMouseMove( event ) {
+				mouseX = ( event.clientX - windowHalfX ) * 10;
+				mouseY = ( event.clientY - windowHalfY ) * 10;
+			}
+
+		var renderOnPage = function() {
+			// Render stuff here...
+            camera.position.x += ( mouseX - camera.position.x ) * .05;
+			camera.position.y += ( - mouseY - camera.position.y ) * .05;
+			camera.lookAt( scene.position );
+			renderer.render(scene, camera);
+		}
+
+
+		init();
+		animate();
+
+	</script>
+</body>
+
+</html>

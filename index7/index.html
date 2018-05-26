@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<title>three.js</title>
+
+	<style>
+		body {
+			margin: 0;
+			font-family: 'Raleway', sans-serif !important;
+			height: 100vh;
+			/*background-color: #eaecee !important;*/
+			color: #555 !important;
+			overflow: hidden;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="container"></div>
+	<script src="js/three.min.js"></script>
+	<script src="js/libs/stats.min.js"></script>
+	<script src="js/libs/underscore.js"></script>
+	<script src="js/libs/dat.gui.js"></script>
+	<script type="text/javascript" src="js/libs/Tween.js"></script>
+
+	<script>
+		var container = document.getElementById('container');
+
+		// All three.js stuff goes in here...
+		document.addEventListener('mousemove', onDocumentMouseMove, false);
+		var windowHalfX = window.innerWidth / 2;
+		var windowHalfY = window.innerHeight / 2;
+
+		// Start by defining the variables we need:
+		var camera, scene, renderer, stats, particle, paused = false;
+		var particles = [];
+		var geometry, material, mesh;
+		var mouseX = 0, mouseY = 300;
+
+		stats = new Stats();
+		container.appendChild(stats.dom);
+
+		// Initialize the scene
+		var init = function () {
+
+			// Init stuff here...
+			var material = new THREE.SpriteMaterial({
+				map: new THREE.CanvasTexture(generateSprite()),
+				blending: THREE.AdditiveBlending,
+				color: 0xffffff,
+				fog: false,
+				lights: true,
+			});
+
+			scene = new THREE.Scene();
+			var imgType = '.jpg';
+			scene.background = new THREE.CubeTextureLoader().setPath('bg/Park3Med/')
+				.load(['px' + imgType, 'nx' + imgType, 'py' + imgType, 'ny' + imgType, 'pz' + imgType, 'nz' + imgType], function (a) {
+					//console.log(a);
+				});
+
+			//var light = new THREE.AmbientLight( 0x000000 );
+			//scene.add( light );
+
+			//var light = new THREE.PointLight( 0xff0000, 1, 100 );
+			//light.position.set( 50, 50, 50 );
+			//scene.add( light );
+
+			scene.fog = new THREE.Fog(0x000000, 1, 10000);
+
+			camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+
+			camera.position.set(0, 0, 1000);
+
+			// Create a new Renderer element (this will be our canvas)
+			renderer = new THREE.WebGLRenderer();
+
+			// Then we'll set it so that it takes up the entire viewport
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setClearColor(0x000000, 1);
+
+			// Now let's add our renderer to our document
+			container.appendChild(renderer.domElement);
+
+			for (var i = 0; i < 1; i++) {
+				particle = new THREE.Sprite(material);
+				initParticle(particle, i * 10);
+				scene.add(particle);
+			}
+
+			window.addEventListener('resize', onWindowResize, false);
+
+			console.log(camera);
+			console.log(scene);
+			console.log(renderer);
+		}
+
+		var controlBar = function () {
+			/*this.message = 'dat.gui';
+			this.speed = 0.8;
+			this.displayOutline = false;*/
+			this.toggle = function () {
+				paused = !paused;
+				if (!paused)
+					animate();
+			};
+			this.drawLine = function () {
+				//var particlesRev = _.filter(particles, function(elem){ return elem.loop == 0; });
+				var res = _.chain(particles).groupBy("uuid").sortBy("step").flatten(true).groupBy("loop").value();
+				console.log(res);
+
+				_.each(res, function (elem, index) {
+					var material = new THREE.LineBasicMaterial(
+						{
+							color: new THREE.Color('red').setHex( Math.random() * 0xffffff ),
+							linewidth: 3,
+						}
+					);
+					var geometry = new THREE.Geometry();
+
+					_.each(elem, function (val) {
+						geometry.vertices.push(new THREE.Vector3(val.position.x, val.position.y, val.position.z));
+						//console.log(val.position);
+					});
+
+					var line = new THREE.Line( geometry, material );
+					scene.add( line );
+				});
+			};
+		};
+
+
+
+		window.onload = function () {
+			var controls = new controlBar();
+			var gui = new dat.GUI();
+			/*gui.add(controls, 'message');
+			gui.add(controls, 'speed', -5, 5);
+			gui.add(controls, 'displayOutline');*/
+			gui.add(controls, 'toggle');
+			gui.add(controls, 'drawLine');
+		};
+
+
+		function onWindowResize() {
+			windowHalfX = window.innerWidth / 2;
+			windowHalfY = window.innerHeight / 2;
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+
+		function generateSprite() {
+			var canvas = document.createElement('canvas');
+			canvas.width = 16;
+			canvas.height = 16;
+			var context = canvas.getContext('2d');
+			var gradient = context.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width / 2);
+			gradient.addColorStop(0, 'rgba(255,255,255,.7)');
+			gradient.addColorStop(0.2, 'rgba(255,255,255,.7)');
+			gradient.addColorStop(0.4, 'rgba(64,64,64,.7)');
+			gradient.addColorStop(1, 'rgba(0,0,0,.7)');
+			context.fillStyle = gradient;
+			context.fillRect(0, 0, canvas.width, canvas.height);
+			return canvas;
+		}
+
+		function onDocumentMouseMove(event) {
+			mouseX = (event.clientX - windowHalfX) * .75;
+			//mouseY = (event.clientY - windowHalfY) * 2;
+		}
+
+		function initParticle(particle, delay) {
+			var particle = this instanceof THREE.Sprite ? this : particle;
+			var delay = delay !== undefined ? delay : 0;
+			particle.position.set(Math.random() * 10000 - 5000, 4000, Math.random() * -4000 + 1000);
+			particle.scale.x = particle.scale.y = Math.random() * 32 + 16;
+
+			if (particle.userData.loop !== undefined) {
+				particle.userData.loop += 1;
+			} else {
+				particle.userData.loop = 0;
+			}
+
+			new TWEEN.Tween(particle)
+				.delay(delay)
+				.to({}, 8000)
+				.onUpdate(function (object) {
+					object.step = Date.now();
+					particles.push(
+						{
+							uuid: object.uuid,
+							step: object.step,
+							position: {
+								x: object.position.x,
+								y: object.position.y,
+								z: object.position.z,
+							},
+							loop: object.userData.loop
+						}
+					);
+					//console.log(object);
+					//console.log(Date.now());
+				})
+				.onComplete(initParticle)
+				.start();
+
+			new TWEEN.Tween(particle.position)
+				.delay(delay)
+				.to({ x: Math.random() * 200, y: -5000, z: particle.position.z - 500 }, (Math.random() * 2000) + 6000)
+				.onUpdate(function (object) {
+					//console.log(object);
+				}).start();
+
+			new TWEEN.Tween(particle.scale)
+				.delay(delay)
+				.to({ x: 0.01, y: 0.01 }, 8000)
+				.start();
+		}
+
+		function onDocumentTouchStart(event) {
+			if (event.touches.length == 1) {
+				event.preventDefault();
+				mouseX = event.touches[0].pageX - windowHalfX;
+				mouseY = event.touches[0].pageY - windowHalfY;
+			}
+		}
+		function onDocumentTouchMove(event) {
+			if (event.touches.length == 1) {
+				event.preventDefault();
+				mouseX = event.touches[0].pageX - windowHalfX;
+				mouseY = event.touches[0].pageY - windowHalfY;
+			}
+		}
+
+		var animate = function () {
+			if (paused) return;
+			requestAnimationFrame(animate);
+			stats.update();
+			renderOnPage();
+		}
+
+		var renderOnPage = function () {
+			// Render stuff here...
+			TWEEN.update();
+
+			camera.position.x += (mouseX - camera.position.x) * .05;
+			camera.position.y += (- mouseY - camera.position.y) * .05;
+			camera.lookAt(scene.position);
+			renderer.render(scene, camera);
+		}
+
+
+		init();
+		animate();
+
+	</script>
+</body>
+
+</html>
